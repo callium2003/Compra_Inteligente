@@ -1,0 +1,257 @@
+PROMPT (PCI) — Compra Inteligente
+
+P — Objetivo
+
+Implementar um app web que recebe lista de compras por texto (e depois por voz), normaliza com IA, consulta até 4 supermercados que entregam no CEP do usuário e apresenta:
+
+
+
+Cesta única (tudo na loja mais barata, considerando frete/mínimos);
+
+Cesta mista ótima (divide itens entre lojas para menor total, com fretes/mínimos).
+
+Usuários criam suas próprias contas. O app salva endereços, histórico de listas e cotações. Banco e Auth no Supabase com RLS.
+
+C — Chain (Fluxo end-to-end)
+
+C.1 Autenticação & Contexto
+
+
+
+Login/cadastro via Supabase Auth (email/senha).
+
+Usuário mantém múltiplos endereços (CEP obrigatório) e escolhe um ativo.
+
+O CEP ativo é usado para precificar frete/disponibilidade por loja.
+
+C.2 Entrada da Lista
+
+
+
+Texto (default): textarea com exemplos; botão Validar & Normalizar → pré-visualização em tabela editável.
+
+Voz (depois): upload/🎤 → STT PT-BR → mesmo normalizador.
+
+CSV (opcional/Avançado): deixar disponível, não no fluxo principal.
+
+Histórico: salvar e reusar listas anteriores.
+
+C.3 IA de Apoio
+
+
+
+STT: Whisper/Deepgram/Google STT (PT-BR).
+
+Normalização (LLM leve): corrigir typos/unidades/ marca/preferência apenas quando heurística/regex não resolver (custo baixo).
+
+C.4 Normalização (estrutura interna)
+
+
+
+Para cada item:
+
+qty (≥1), product_name, size_value, size_unit ∈ {g,kg,ml,l,un}, brand?, preference ∈ {any,cheapest,exact_brand,similar}, notes?
+
+
+
+→ Derivar PPU quando houver tamanho.
+
+C.5 Coleta (conectores por loja)
+
+
+
+Iniciar sessão na loja com CEP do usuário.
+
+Obter: nome, preço, embalagem, disponibilidade, link, promo.
+
+Respeitar ToS, rate limiting, cache curto.
+
+C.6 Cálculo
+
+
+
+Cesta única: somatório itens + frete/taxas + mínimos.
+
+Cesta mista: matriz preço item×loja + fretes/mínimos.
+
+C.7 Otimização (ILP)
+
+
+
+Variáveis: x_{i,s} (item i na loja s), y_s (usar loja s).
+
+Objetivo: minimizar Σ p_{i,s}x_{i,s} + Σ f_s y_s.
+
+Restrições: cada item em uma loja; mínimos; indisponibilidade.
+
+C.8 Verificação
+
+
+
+Revalidar preço/estoque e frete com CEP ativo (amostragem).
+
+Sinalizar indisponíveis e sugerir similar se permitido.
+
+C.9 Entrega (UX)
+
+
+
+Tela com Cesta única vs Cesta mista, totais, fretes, economia (R$ e %).
+
+Links/carrinhos quando possível.
+
+Salvar cotação e exportar (CSV/JSON) — export pode ficar para depois.
+
+C.10 Publicação
+
+
+
+Backend: Render/Railway (free).
+
+Frontend: no mesmo serviço (HTML/JS) ou Vercel (se React/Next).
+
+Domínio: subdomínio gratuito.
+
+C.11 Banco de Dados (Supabase)
+
+
+
+Tabelas (todas com RLS ON):
+
+user_addresses(id, user_id→auth.users, label, cep, street, number, complement, neighborhood, city, state, is_default, created_at)
+
+shopping_lists(id, user_id, title, created_at)
+
+shopping_items(id, list_id→shopping_lists, qty, product_name, size_value, size_unit, brand, preference, notes)
+
+quotes(id, user_id, list_id, address_id, stores text[], result_json jsonb, created_at)
+
+(depois) audio_uploads(id, user_id, list_id?, storage_path, duration_s, lang, transcript?, created_at)
+
+Policies RLS:
+
+Tabelas com user_id: SELECT/INSERT/UPDATE/DELETE somente quando user_id = auth.uid().
+
+shopping_items: checar via list_id se a lista pertence ao auth.uid().
+
+Índices:
+
+shopping_lists(user_id, created_at desc)
+
+shopping_items(list_id)
+
+quotes(user_id, created_at desc)
+
+Storage: criar bucket privado audio (voz) e servir via URLs assinadas geradas pelo backend.
+
+C.12 MVP (primeira versão funcional)
+
+
+
+Login/cadastro + endereço (CEP).
+
+Entrada por Texto → Validar & Normalizar → prévia editável → Salvar lista.
+
+/quote (mock): retornar e salvar comparação simulada em quotes.
+
+Voz/STT plugar na rodada seguinte.
+
+I — Index
+
+P. Objetivo
+
+C.1 Autenticação & Contexto
+
+C.2 Entrada (Texto/Voz/CSV opcional + Histórico)
+
+C.3 IA (STT + normalização leve)
+
+C.4 Normalização (estruturas)
+
+C.5 Coleta
+
+C.6 Cálculo
+
+C.7 Otimização (ILP)
+
+C.8 Verificação
+
+C.9 Entrega (UX)
+
+C.10 Publicação
+
+C.11 Banco (Supabase + RLS + Storage)
+
+C.12 MVP
+
+Requisitos de Implementação (sem código)
+
+1) Telas (frontend)
+
+Login/Cadastro (Supabase Auth).
+
+Endereços: CRUD user_addresses, mostrar Endereço ativo.
+
+Nova Cotação:
+
+Textarea + placeholder (exemplos prontos).
+
+Botão Validar & Normalizar → mostrar tabela editável (qty, product_name, size_value, size_unit, brand, preference, notes).
+
+Botão Salvar lista (grava em shopping_lists/shopping_items).
+
+Botão Fazer Cotação (MVP) → chama /quote (mock) e exibe resultados.
+
+Resultados: cartões Cesta única e Cesta mista com totais e economia.
+
+Histórico: listar/reabrir listas e cotações do usuário.
+
+2) API (backend leve)
+
+POST /normalize
+
+Body: { raw_text: string, user_id: string }
+
+Resp: { list_id: uuid, items: [...] }
+
+
+
+(Heurística/regex primeiro; chamar LLM leve só se ambíguo.)
+
+POST /quote (MVP)
+
+Body: { list_id: uuid, address_id: uuid, stores: string[] }
+
+Resp (mock): objeto com single_store e mixed_basket (+ salvar em quotes).
+
+(CRUD) GET/POST /lists, GET/POST /lists/:id/items — podem usar SDK do Supabase direto do front (RLS) ou passar pelo backend se preferirem.
+
+3) IA (depois do MVP)
+
+STT: Whisper/Deepgram/Google STT (PT-BR).
+
+Upload voz → salvar em audio/{user_id}/… (bucket privado) → gerar URL assinada quando necessário.
+
+Normalização com LLM: só fallback quando regex falhar.
+
+4) Segurança & Chaves
+
+NUNCA expor service_role no frontend.
+
+Front usa NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY.
+
+Backend usa SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
+
+Habilitar CORS no backend para o domínio do front.
+
+5) Testes de aceitação (MVP)
+
+Criar conta → logar → cadastrar CEP.
+
+Colar lista (5–10 itens) → Validar & Normalizar → salvar lista.
+
+Fazer Cotação (MVP) → ver Cesta única vs Mista + economia.
+
+Salvar e listar Histórico de cotações.
+
+RLS: outro usuário não vê meus dados.
