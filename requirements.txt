@@ -1,0 +1,12 @@
+flask
+requests
+beautifulsoup4
+supabase
+gunicorn
+python-dotenv
+# Adicione aqui as dependências realmente usadas no seu backend:
+# selenium           # Se usar scraping JS
+# playwright         # Se fizer automação de browser
+# pandas             # Se trabalha com DataFrame ou processamento de dados
+# numpy              # Se tem cálculos numéricos
+# lxml               # Se faz parsing avançado de HTML/XML
