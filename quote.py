@@ -3,24 +3,25 @@ Rota de cotação com conectores reais
 """
 import logging
 from flask import Blueprint, request, jsonify
-from ..connectors import (
+# Ajuste: Remover conectores não implementados
+from connectors import (
     ExtraConnector,
     CarrefourConnector,
-    MamboConnector,
-    MercadoLivreConnector
+    # MamboConnector,  # Desativado temporariamente
+    # MercadoLivreConnector # Desativado temporariamente
 )
-from ..cache import PriceCache
+from cache import PriceCache
 
 logger = logging.getLogger(__name__)
 
 quote_bp = Blueprint('quote', __name__)
 
-# Inicializar conectores
+# Inicializar conectores funcionais
 connectors = {
     'Extra': ExtraConnector(),
     'Carrefour': CarrefourConnector(),
-    'Mambo': MamboConnector(),
-    'Mercado Livre': MercadoLivreConnector()
+    # 'Mambo': MamboConnector(), # Desativado temporariamente
+    # 'Mercado Livre': MercadoLivreConnector() # Desativado temporariamente
 }
 
 # Inicializar cache (1 hora de TTL)

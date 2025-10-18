@@ -19,7 +19,7 @@ class ExtraConnector(SupermarketConnector):
             name="Extra",
             base_url="https://www.extramercado.com.br"
         )
-        self.use_mock = True  # Usar mock (site com proteção anti-bot)
+        self.use_mock = False  # Usar scraping real
     
     def search(self, product_name: str, cep: Optional[str] = None) -> List[Dict]:
         """
@@ -36,24 +36,15 @@ class ExtraConnector(SupermarketConnector):
             return self._search_mock(product_name)
         
         try:
-            # URL de busca
             search_url = f"{self.base_url}/busca?terms={quote(product_name)}"
             logger.info(f"Buscando '{product_name}' no Extra: {search_url}")
             
-            # Fazer requisição
             response = self.make_request(search_url)
             soup = self.parse_html(response.text)
             
             products = []
             
-            # Buscar produtos usando seletores identificados
-            # Seletor: div com classe CardStyled
-            product_cards = soup.select('div[class*="CardStyled"]')
-            
-            if not product_cards:
-                logger.warning(f"Nenhum card encontrado para '{product_name}' no Extra")
-                # Tentar seletor alternativo
-                product_cards = soup.select('div[class*="Card-sc"]')
+            product_cards = soup.select('div[class*="CardStyled__Card-"]')
             
             if not product_cards:
                 logger.warning(f"Nenhum produto encontrado para '{product_name}' no Extra, usando mock")
@@ -61,56 +52,27 @@ class ExtraConnector(SupermarketConnector):
             
             logger.info(f"Extra: {len(product_cards)} cards encontrados")
             
-            for card in product_cards[:10]:  # Limitar a 10 resultados
+            for card in product_cards[:10]:
                 try:
-                    # Extrair nome usando seletor identificado
-                    # Nome está em: a[class*="Title"]
-                    name_elem = card.select_one('a[class*="Title"]')
-                    if not name_elem:
-                        # Fallback: buscar qualquer link com texto
-                        name_elem = card.select_one('a[href*="/produto/"]')
-                    
-                    if not name_elem:
-                        continue
-                    
-                    name = name_elem.get_text(strip=True)
-                    if not name:
-                        # Tentar pegar do alt da imagem
-                        img = card.select_one('img[alt]')
-                        name = img.get('alt', '') if img else ''
-                    
+                    name_elem = card.select_one('a[class*="ProductTitle__Name-"]')
+                    name = name_elem.get_text(strip=True) if name_elem else ''
+
                     if not name:
                         continue
-                    
-                    # Extrair preço usando seletor identificado
-                    # Preço está em: p[class*="PriceValue"]
-                    price_elem = card.select_one('p[class*="PriceValue"]')
-                    if not price_elem:
-                        # Fallback: buscar qualquer elemento com "R$"
-                        price_elem = card.find(string=re.compile(r'R\$\s*[\d,]+'))
-                        if price_elem:
-                            price_text = price_elem
-                        else:
-                            continue
-                    else:
-                        price_text = price_elem.get_text(strip=True)
+
+                    price_elem = card.select_one('p[class*="PriceUI__Price-sc"]')
+                    price_text = price_elem.get_text(strip=True) if price_elem else ''
                     
                     price = self.normalize_price(price_text)
                     
                     if price == 0:
-                        logger.debug(f"Preço zero para '{name}', ignorando")
                         continue
-                    
-                    # Extrair URL
+
                     link_elem = card.select_one('a[href*="/produto/"]')
-                    url = link_elem.get('href', '') if link_elem else ''
-                    
-                    if url and not url.startswith('http'):
-                        url = self.base_url + url
-                    
-                    # Extrair tamanho do nome
+                    url = self.base_url + link_elem['href'] if link_elem else ''
+
                     size_value, size_unit = self.extract_size(name)
-                    
+
                     products.append({
                         'name': name,
                         'price': price,
@@ -120,7 +82,7 @@ class ExtraConnector(SupermarketConnector):
                         'size_unit': size_unit,
                         'mock': False
                     })
-                    
+
                     logger.debug(f"Extra: {name} - R$ {price:.2f}")
                 
                 except Exception as e:
@@ -142,14 +104,10 @@ class ExtraConnector(SupermarketConnector):
         """Busca mock com preços realistas"""
         logger.info(f"Extra (mock): Buscando '{product_name}'")
         
-        # Gerar preço mock baseado em hash do nome
         seed = sum(ord(c) for c in product_name.lower())
         random.seed(seed)
         
-        # Preço base entre 3 e 15 reais
         base_price = random.uniform(3.0, 15.0)
-        
-        # Extrair tamanho
         size_value, size_unit = self.extract_size(product_name)
         
         return [{
@@ -170,20 +128,13 @@ class ExtraConnector(SupermarketConnector):
             
             details = {'url': product_url, 'store': self.name}
             
-            # Nome
-            name_elem = soup.select_one('h1, [class*="ProductName"]')
+            name_elem = soup.select_one('h1[class*="ProductName"]')
             if name_elem:
                 details['name'] = name_elem.get_text(strip=True)
             
-            # Preço
             price_elem = soup.select_one('p[class*="PriceValue"]')
             if price_elem:
                 details['price'] = self.normalize_price(price_elem.get_text(strip=True))
-            
-            # Marca
-            brand_elem = soup.select_one('[class*="brand"], [class*="Brand"]')
-            if brand_elem:
-                details['brand'] = brand_elem.get_text(strip=True)
             
             return details
         
