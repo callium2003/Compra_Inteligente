@@ -1,42 +1,58 @@
-from __future__ import annotations
+# NEXUS COPY - Gerador de CTA
+# Matriz completa: 4 objetivos x 3 estagios de funil = 12 CTAs
 
-from typing import Dict
+CTA_MAP = {
+    "vender": {
+        "topo": "Quer acelerar seu resultado? Comenta 'NEXUS' que eu te envio o proximo passo.",
+        "meio": "Se isso fez sentido, me chama no direct para ver como aplica no seu caso.",
+        "fundo": "Clique no link e entre agora no NEXUS COPY para implementar hoje mesmo.",
+    },
+    "lead": {
+        "topo": "Comenta 'GUIA' para receber o checklist gratuito de roteiro viral.",
+        "meio": "Baixe o material no link do perfil e aplique no proximo video.",
+        "fundo": "Preencha o formulario e receba um plano personalizado no seu nicho.",
+    },
+    "engajamento": {
+        "topo": "Curtiu? Segue o perfil para receber novos scripts curtos todos os dias.",
+        "meio": "Salva este video e marca alguem que precisa aplicar isso hoje.",
+        "fundo": "Comenta sua maior dificuldade que eu te respondo com um roteiro pratico.",
+    },
+    "autoridade": {
+        "topo": "Compartilha esse video para fortalecer sua referencia no tema.",
+        "meio": "Comenta seu nicho e eu te devolvo um hook estrategico personalizado.",
+        "fundo": "Veja os estudos de caso nos destaques e valide o metodo completo.",
+    },
+}
+
+
+def gerar_cta(objetivo: str, funil: str) -> str:
+    """Gera CTA por tipo e estagio de funil."""
+    return CTA_MAP.get(objetivo, CTA_MAP["engajamento"]).get(funil, CTA_MAP["engajamento"]["topo"])
 
 
 class CTAGenerator:
-    """Gera CTA por tipo e estágio de funil."""
+    """Gerador de CTA com matriz completa."""
 
-    CTA_MAP = {
-        "vender": {
-            "topo": "Quer acelerar seu resultado? Comenta 'NEXUS' que eu te envio o próximo passo.",
-            "meio": "Se isso fez sentido, me chama no direct para ver como aplico no seu caso.",
-            "fundo": "Clique no link e entre agora no NEXUS COPY para implementar hoje.",
-        },
-        "lead": {
-            "topo": "Comenta 'GUIA' e eu libero um checklist de roteiro viral.",
-            "meio": "Baixe o material gratuito no link do perfil e aplique no próximo vídeo.",
-            "fundo": "Preencha o formulário e receba o plano personalizado no seu nicho.",
-        },
-        "atrair": {
-            "topo": "Segue o perfil para receber scripts curtos todos os dias.",
-            "meio": "Salva este vídeo para usar como modelo na próxima gravação.",
-            "fundo": "Se quiser acompanhamento, entre para a comunidade fechada do perfil.",
-        },
-        "autoridade": {
-            "topo": "Se isso te ajudou, compartilha com alguém que grava conteúdo.",
-            "meio": "Comenta seu nicho que eu respondo com um hook personalizado.",
-            "fundo": "Assista os destaques e veja os estudos de caso completos.",
-        },
-    }
+    @staticmethod
+    def get_all() -> dict:
+        return CTA_MAP
 
-    FUNIL_HINT = {
-        "TikTok": "topo",
-        "Reels": "meio",
-        "Shorts": "topo",
-    }
+    @staticmethod
+    def generate(objetivo: str, funil: str, produto: str = "") -> str:
+        base = gerar_cta(objetivo, funil)
+        if produto:
+            return f"{base} Nao perca tempo - comece agora no {produto}."
+        return base
 
-    def generate(self, contexto: Dict[str, str]) -> str:
-        objetivo = contexto["objetivo"].lower()
-        plataforma = contexto["plataforma"]
-        funil = self.FUNIL_HINT.get(plataforma, "meio")
-        return self.CTA_MAP.get(objetivo, self.CTA_MAP["atrair"])[funil]
+    @staticmethod
+    def generate_matriz() -> list:
+        """Retorna todos os 12 CTAs da matriz."""
+        matriz = []
+        for obj in CTA_MAP:
+            for fun in ["topo", "meio", "fundo"]:
+                matriz.append({
+                    "objetivo": obj,
+                    "funil": fun,
+                    "cta": CTA_MAP[obj][fun],
+                })
+        return matriz
