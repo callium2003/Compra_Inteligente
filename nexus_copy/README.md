@@ -25,24 +25,26 @@ nexus_copy/
 
 1. **Gerador de Hooks**
    - 16 formatos virais
-   - exemplos base + exemplos práticos reais em cada formato
-   - classificação por tipo emocional (medo, curiosidade, ganho, urgência)
+   - exemplos por formato
+   - geração de variações dinâmicas
 2. **Gerador de Intensificadores de Mistério**
-   - seleção baseada no tipo emocional do hook
-   - 3 intensificadores por hook
+   - 10 estruturas de retenção
+   - 3 saídas por hook
 3. **Gerador de Posicionamento de Autoridade**
+   - frases de prova social + domínio de método
 4. **Gerador de Conteúdo Notável**
+   - corpo em 3 blocos práticos
 5. **Gerador de CTA**
-   - matriz completa por objetivo x funil (12 CTAs no mínimo)
+   - tipos: venda, lead, engajamento (atrair), autoridade
+   - adaptação por estágio de funil
 6. **Montador de Roteiro Completo**
-   - saída estruturada e também formatada em Markdown com emojis
+   - junta todos os módulos em sequência final
 7. **Adaptador por Plataforma**
    - TikTok: agressivo/nativo
    - Reels: clean/aspiracional
    - Shorts: direto/educativo
 8. **Adaptador por Nicho**
    - emagrecimento, ganhar dinheiro, relacionamento, saúde
-   - cada nicho com 10+ palavras-chave, 3 estruturas de hook e 3 CTAs recomendados
 
 ## Como usar
 
@@ -52,13 +54,30 @@ No diretório raiz do repositório:
 python nexus_copy/main.py
 ```
 
-O assistente faz 5 perguntas do briefing e, se algo não for respondido, aplica valores padrão inteligentes.
+O assistente fará 5 perguntas:
+1. Produto/serviço/ideia
+2. Objetivo do vídeo
+3. Plataforma principal
+4. Público-alvo (nicho + dor)
+5. Ângulo/promessa
 
-Saída gerada:
+Depois ele gera:
 - 3 hooks virais com overlay e cena
 - 3 intensificadores por hook
 - posicionamento de autoridade
 - conteúdo notável
-- CTA adaptado ao objetivo/funil
-- recomendações por nicho
+- CTA adaptado ao objetivo
+
+## Exemplo de uso rápido
+
+```bash
+python nexus_copy/main.py
+```
+
+Exemplo de entrada:
+- Produto: Mentoria para creators
+- Objetivo: vender
+- Plataforma: TikTok
+- Público: ganhar dinheiro + baixa conversão
+- Ângulo: transformar views em clientes
 

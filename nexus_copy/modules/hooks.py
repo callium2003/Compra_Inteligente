@@ -1,7 +1,9 @@
-from __future__ import annotations
+# NEXUS COPY - Gerador de Hooks Virais
+# 16 formatos com exemplos praticos reais e tipo emocional
 
+from __future__ import annotations
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List
 
 
@@ -14,64 +16,60 @@ class HookFormat:
     exemplo_pratico_real: str
 
 
+FORMATOS: List[HookFormat] = [
+    HookFormat("Como Eu", "Como eu {resultado} sem {objecao}", "Como eu fiz minha primeira venda em 24h", "curiosidade", "Como eu fiz R$200 por dia sem aparecer usando so o celular"),
+    HookFormat("Como Fazer X Sem Y", "Como {resultado} sem {esforco}", "Como vender sem gastar com trafego", "ganho", "Como vender todos os dias sem gastar 1 real com ads"),
+    HookFormat("Velocidade", "Como conseguir {resultado} em {tempo}", "Como conseguir clientes em 7 dias", "urgencia", "Como fazer 10 vendas em 3 dias sem aparecer"),
+    HookFormat("Uma Coisa So", "{coisa} me trouxe {resultado}", "Esse habito me fez faturar todos os dias", "curiosidade", "Esse unico erro me custou R$5000 mas me ensinou a vender"),
+    HookFormat("Comando Direto", "Faca isso e {resultado}", "Faca isso e aumente suas vendas hoje", "ganho", "Faca isso e dobre seus seguidores em 7 dias"),
+    HookFormat("Lista Magnetica", "{numero} coisas que {acao}", "3 erros que te impedem de vender", "medo", "3 coisas que estao destruindo seu engajamento sem voce perceber"),
+    HookFormat("Quebra de Crenca", "A verdade sobre {topico}", "A verdade sobre ganhar dinheiro online", "curiosidade", "A verdade sobre reels virais que ninguem te conta"),
+    HookFormat("Medo Oculto", "O perigo de {acao}", "O perigo de anunciar sem estrategia", "medo", "O perigo de postar todo dia sem uma estrategia de hook"),
+    HookFormat("Correcao", "Voce esta fazendo {acao} errado", "Voce esta perdendo vendas por causa disso", "medo", "Voce esta criando conteudo errado se ninguem assiste ate o final"),
+    HookFormat("Identificacao", "{numero} sinais de que {situacao}", "3 sinais de que seu negocio vai crescer", "curiosidade", "3 sinais de que seu proximo video vai viralizar"),
+    HookFormat("Hack de Especialista", "O truque que {profissao} usa para {resultado}", "O truque que copywriters usam pra vender mais", "ganho", "O truque que criadores virais usam para prender atencao nos 3 primeiros segundos"),
+    HookFormat("Reviravolta", "Depois que vi isso, nunca mais {acao}", "Depois que vi isso, nunca mais anunciei igual", "curiosidade", "Depois que descobri isso, parei de postar sem estrategia"),
+    HookFormat("Libertacao de Dor", "Nunca mais {problema}", "Nunca mais perca dinheiro com anuncios", "medo", "Nunca mais tenha um video com menos de 100 views"),
+    HookFormat("Exclusividade", "O segredo de {resultado}", "O segredo das campanhas que vendem todo dia", "curiosidade", "O segredo dos reels que chegam a 1M de views sem trafego pago"),
+    HookFormat("Valor Alto", "Guia completo para {objetivo}", "Guia completo para comecar no digital", "ganho", "Guia completo para criar hooks virais que prendem atencao"),
+    HookFormat("Identidade", "So quem {acao} entende isso", "So quem tenta vender todo dia entende isso", "curiosidade", "So quem ja tentou viralizar sabe como e frustrante ter 10 views"),
+]
+
+TIPOS_EMOCIONAIS = ["curiosidade", "ganho", "medo", "urgencia"]
+
+
 class HookGenerator:
-    """Gera hooks virais usando 16 formatos clássicos de atenção."""
+    """Gera hooks virais usando 16 formatos classicos de atencao."""
 
-    FORMATS: List[HookFormat] = [
-        HookFormat("Quebra de padrão", "Pare de {erro}. Faça isso: {solucao}.", "Pare de postar sem gancho. Faça isso: comece com um choque visual.", "urgencia", "Ex.: 'Pare de tentar emagrecer cortando tudo. Faça isso: monte 2 refeições com alta saciedade por dia.'"),
-        HookFormat("Segredo revelado", "Ninguém fala isso sobre {tema}...", "Ninguém fala isso sobre perder peso sem dieta maluca...", "curiosidade", "Ex.: 'Ninguém fala isso sobre ganhar dinheiro: oferta clara converte mais que postar todo dia.'"),
-        HookFormat("Erro comum", "Se você ainda {erro}, está travando {resultado}.", "Se você ainda grava sem roteiro, está travando seu alcance.", "medo", "Ex.: 'Se você ainda responde no impulso no relacionamento, está travando sua conexão emocional.'"),
-        HookFormat("Lista curta", "{quantidade} passos para {resultado} ainda hoje.", "3 passos para vender mais com vídeos ainda hoje.", "ganho", "Ex.: '3 passos para aumentar sua energia ainda hoje: água, luz solar e caminhada pós-almoço.'"),
-        HookFormat("Contrarian", "Esqueça {crenca}. O que funciona é {nova_abordagem}.", "Esqueça consistência sem estratégia. O que funciona é consistência com estrutura.", "curiosidade", "Ex.: 'Esqueça cardio infinito. O que funciona é treino de força + déficit moderado.'"),
-        HookFormat("Dor específica", "Você sente {dor}? Isso está custando {prejuizo}.", "Você sente vergonha de aparecer? Isso está custando clientes.", "medo", "Ex.: 'Você sente cansaço todo dia? Isso está custando sua produtividade e foco.'"),
-        HookFormat("Prova rápida", "Eu fiz {resultado} em {tempo} e vou te mostrar como.", "Eu fiz 40 vendas em 7 dias e vou te mostrar como.", "ganho", "Ex.: 'Eu recuperei minha rotina de sono em 14 dias e vou te mostrar o protocolo.'"),
-        HookFormat("Pergunta provocativa", "Você realmente sabe {tema}?", "Você realmente sabe por que seus vídeos não retêm?", "curiosidade", "Ex.: 'Você realmente sabe por que seu perfil tem visualização, mas não tem cliente?'"),
-        HookFormat("Antes x depois", "Antes: {antes}. Depois: {depois}.", "Antes: 500 views. Depois: 50k views em 1 semana.", "ganho", "Ex.: 'Antes: discussões diárias. Depois: comunicação respeitosa em 2 semanas.'"),
-        HookFormat("Desafio", "Te desafio a testar isso por {tempo}.", "Te desafio a testar esse roteiro por 3 dias.", "urgencia", "Ex.: 'Te desafio a aplicar esse roteiro de oferta por 72h e medir seus leads.'"),
-        HookFormat("Mito vs verdade", "Mito: {mito}. Verdade: {verdade}.", "Mito: precisa viralizar para vender. Verdade: precisa converter.", "curiosidade", "Ex.: 'Mito: cortar carboidrato emagrece. Verdade: o que emagrece é consistência no déficit.'"),
-        HookFormat("Ameaça de perda", "Se ignorar isso, você perde {beneficio}.", "Se ignorar isso, você perde leads todos os dias.", "medo", "Ex.: 'Se ignorar esse check-up, você perde chance de prevenir problemas silenciosos.'"),
-        HookFormat("Tutorial relâmpago", "Em {tempo}, você vai aprender {habilidade}.", "Em 30 segundos, você vai aprender um hook que prende.", "ganho", "Ex.: 'Em 20 segundos, você vai aprender a abrir um vídeo com retenção alta.'"),
-        HookFormat("Confissão", "Eu também {falha}, até descobrir {virada}.", "Eu também travava na câmera, até descobrir esse script.", "curiosidade", "Ex.: 'Eu também falhava nas vendas por DM, até descobrir um script de 4 mensagens.'"),
-        HookFormat("Alvo específico", "Se você é {publico}, isso é para você.", "Se você é nutricionista iniciando no digital, isso é para você.", "ganho", "Ex.: 'Se você é mãe sem tempo e quer emagrecer, isso é para você.'"),
-        HookFormat("Alerta urgente", "Urgente: {mudanca} já está afetando {publico}.", "Urgente: o algoritmo já está punindo vídeos sem retenção inicial.", "urgencia", "Ex.: 'Urgente: novos padrões de retenção já estão reduzindo alcance de vídeos longos sem gancho.'"),
-    ]
+    @staticmethod
+    def get_all() -> List[HookFormat]:
+        return FORMATOS
 
-    def generate_variations(self, contexto: Dict[str, str], quantidade: int = 3) -> List[Dict[str, str]]:
-        pool = self.FORMATS.copy()
-        random.shuffle(pool)
-        hooks = []
-        for formato in pool[:quantidade]:
-            hook_text = formato.template.format(
-                tema=contexto["produto"],
-                erro=contexto.get("erro", "fazendo o básico"),
-                solucao=contexto.get("promessa", "usar um roteiro em blocos"),
-                resultado=contexto.get("objetivo", "resultado"),
-                quantidade=contexto.get("quantidade", "3"),
-                crenca=contexto.get("crenca", "seguir dicas genéricas"),
-                nova_abordagem=contexto.get("nova_abordagem", "usar dados de retenção"),
-                dor=contexto.get("dor", "estagnação"),
-                prejuizo=contexto.get("prejuizo", "tempo e oportunidade"),
-                tempo=contexto.get("tempo", "7 dias"),
-                antes=contexto.get("antes", "pouco alcance"),
-                depois=contexto.get("depois", "alta retenção"),
-                mito=contexto.get("mito", "mais conteúdo = mais vendas"),
-                verdade=contexto.get("verdade", "mais clareza = mais vendas"),
-                beneficio=contexto.get("beneficio", "crescimento"),
-                habilidade=contexto.get("habilidade", "abrir vídeos com impacto"),
-                falha=contexto.get("falha", "fazia vídeos longos demais"),
-                virada=contexto.get("virada", "o framework NEXUS"),
-                publico=contexto["publico"],
-                mudanca=contexto.get("mudanca", "uma nova tendência de consumo"),
-            )
-            hooks.append(
-                {
-                    "formato": formato.nome,
-                    "tipo_emocional": formato.tipo_emocional,
-                    "hook": hook_text,
-                    "overlay": f"Overlay: {hook_text}",
-                    "cena": f"Cena sugerida: close rápido + texto em tela para {contexto['plataforma']}",
-                    "exemplo_formato": formato.exemplo,
-                    "exemplo_pratico_real": formato.exemplo_pratico_real,
-                }
-            )
-        return hooks
+    @staticmethod
+    def generate_hook(produto: str, dor: str, objetivo: str) -> Dict[str, str]:
+        formato = random.choice(FORMATOS)
+        hook = formato.template.format(
+            resultado=f"vender mais com {produto}",
+            objecao="aparecer",
+            esforco="gastar com trafego",
+            tempo="7 dias",
+            coisa="esse metodo",
+            acao="fazer hooks",
+            numero="3",
+            topico=dor,
+            profissao="copywriters",
+            problema="ter poucos views",
+            profissao="criadores virais",
+            objetivo="viralizar",
+        )
+        return {
+            "formato": formato.nome,
+            "hook": hook,
+            "overlay": f"{objetivo.upper()}?",
+            "cena": f"Mostre {produto} em acao nos primeiros 2s",
+            "tipo_emocional": formato.tipo_emocional,
+        }
+
+    @staticmethod
+    def generate_variations(n: int, produto: str, dor: str, objetivo: str) -> List[Dict[str, str]]:
+        return [HookGenerator.generate_hook(produto, dor, objetivo) for _ in range(n)]

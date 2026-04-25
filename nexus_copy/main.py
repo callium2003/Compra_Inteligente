@@ -1,55 +1,47 @@
-from __future__ import annotations
+# NEXUS COPY - Motor de Roteiros Virais
+# Assistente CLI para criativos de TikTok, Reels e Shorts
 
-from typing import Dict
-
+from modules.hooks import HookGenerator
+from modules.mystery import MysteryIntensifier
+from modules.authority import AuthorityGenerator
+from modules.notable_content import NotableContentGenerator
+from modules.cta import CTAGenerator
 from modules.niche_adapter import NicheAdapter
 from modules.script_builder import CompleteScriptBuilder
 
-
 DEFAULTS = {
-    "produto": "mentoria de criação de conteúdo",
-    "objetivo": "engajamento",
+    "produto": "Mentoria para criadores de conteudo",
+    "objetivo": "vender",
     "plataforma": "TikTok",
-    "publico": "ganhar dinheiro + baixa conversão",
-    "promessa": "transformar views em clientes",
+    "nicho": "ganhar dinheiro",
+    "dor": "baixa conversao",
+    "promessa": "views -> clientes",
 }
 
-VALID_OBJECTIVES = {"vender", "lead", "engajamento", "autoridade", "atrair"}
-VALID_PLATFORMS = {"TikTok", "Reels", "Shorts"}
+VALID_OBJECTIVES = ["vender", "atrair", "lead", "autoridade"]
+VALID_PLATFORMS = ["TikTok", "Reels", "Shorts"]
 
 
-def sanitize_answer(value: str, default: str) -> str:
-    clean_value = value.strip()
-    return clean_value if clean_value else default
+def sanitize_answer(answer: str) -> str:
+    return answer.strip() if answer.strip() else ""
 
 
-def coletar_briefing() -> Dict[str, str]:
-    print("=== NEXUS COPY - Motor de Roteiros Virais ===")
-
-    produto = sanitize_answer(input("1) Qual é o produto/serviço/ideia? "), DEFAULTS["produto"])
-
-    objetivo_raw = sanitize_answer(
-        input("2) Objetivo do vídeo? (vender, lead, engajamento, autoridade) "),
-        DEFAULTS["objetivo"],
-    ).lower()
-    objetivo = objetivo_raw if objetivo_raw in VALID_OBJECTIVES else DEFAULTS["objetivo"]
-
-    plataforma_raw = sanitize_answer(
-        input("3) Plataforma principal? (TikTok, Reels, Shorts) "),
-        DEFAULTS["plataforma"],
-    )
-    plataforma = plataforma_raw if plataforma_raw in VALID_PLATFORMS else DEFAULTS["plataforma"]
-
-    publico = sanitize_answer(input("4) Público-alvo? (nicho + dor principal) "), DEFAULTS["publico"])
-    promessa = sanitize_answer(
-        input("5) Tem algum ângulo ou promessa já definida? "),
-        DEFAULTS["promessa"],
-    )
+def coletar_briefing() -> dict:
+    print("\n=== NEXUS COPY - Motor de Roteiros Virais ===")
+    produto = sanitize_answer(input("(1) Qual e o produto/servico/ideia? ")) or DEFAULTS["produto"]
+    objetivo = sanitize_answer(input("(2) Objetivo do video? (vender, atrair, lead, autoridade) ")) or DEFAULTS["objetivo"]
+    if objetivo not in VALID_OBJECTIVES:
+        objetivo = DEFAULTS["objetivo"]
+    plataforma = sanitize_answer(input("(3) Plataforma principal? (TikTok, Reels, Shorts) ")) or DEFAULTS["plataforma"]
+    if plataforma not in VALID_PLATFORMS:
+        plataforma = DEFAULTS["plataforma"]
+    publico = sanitize_answer(input("(4) Publico-alvo? (nicho + dor principal) ")) or DEFAULTS["nicho"]
+    promessa = sanitize_answer(input("(5) Tem algum angulo ou promessa ja definida? ")) or DEFAULTS["promessa"]
 
     if "+" in publico:
         nicho, dor = [p.strip() for p in publico.split("+", maxsplit=1)]
     else:
-        nicho = publico.split()[0] if publico.split() else "ganhar dinheiro"
+        nicho = publico.split()[0] if publico.split() else DEFAULTS["nicho"]
         dor = ""
 
     return {
@@ -63,12 +55,38 @@ def coletar_briefing() -> Dict[str, str]:
     }
 
 
+def formatar_saida(resultado: dict) -> str:
+    linhas = ["\n=== SAIDA COMPLETA NEXUS COPY ==="]
+    linhas.append("\n1) Hooks virais (3 opcoes com overlay e cena):")
+    for idx, hook in enumerate(resultado["hooks"], start=1):
+        linhas.append(f"\nHook {idx} [{hook['formato']}]: {hook['hook']}")
+        linhas.append(f"  - {hook['overlay']}")
+        linhas.append(f"  - Cena: {hook['cena']}")
+
+    linhas.append("\n2) Intensificadores de misterio (3 por hook):")
+    for bloco in resultado["intensificadores"]:
+        linhas.append(f"\nPara hook: {bloco['hook']}")
+        for frase in bloco["frases"]:
+            linhas.append(f"  - {frase}")
+
+    linhas.append("\n3) Posicionamento de autoridade:")
+    linhas.append(f"  - {resultado['autoridade']}")
+
+    linhas.append("\n4) Conteudo notavel:")
+    for bloco in resultado["conteudo_notavel"]:
+        linhas.append(f"  - {bloco}")
+
+    linhas.append("\n5) CTA adaptado ao objetivo:")
+    linhas.append(f"  - {resultado['cta']}")
+
+    return "\n".join(linhas)
+
+
 def main() -> None:
     briefing = coletar_briefing()
     briefing_adaptado = NicheAdapter().adapt_context(briefing)
-    builder = CompleteScriptBuilder()
-    resultado = builder.build(briefing_adaptado)
-    print(builder.to_markdown(resultado))
+    resultado = CompleteScriptBuilder().build(briefing_adaptado)
+    print(formatar_saida(resultado))
 
 
 if __name__ == "__main__":
