@@ -1,153 +1,189 @@
+"""Rotas e regras de cálculo da cotação de compras."""
 import asyncio
 import logging
-from flask import Blueprint, request, jsonify
-from ..connectors import (
-    ExtraConnector,
-    CarrefourConnector,
-    MamboConnector,
-    MercadoLivreConnector
-)
+
+from flask import Blueprint, jsonify, request
+
 from ..cache import PriceCache
+from ..connectors import CarrefourConnector, ExtraConnector, MamboConnector, MercadoLivreConnector
 from ..utils.matching import get_best_match
 
 logger = logging.getLogger(__name__)
-quote_bp = Blueprint('quote', __name__)
+quote_bp = Blueprint("quote", __name__)
 
-# Inicializar conectores
 connectors = {
-    'Extra': ExtraConnector(),
-    'Carrefour': CarrefourConnector(),
-    'Mambo': MamboConnector(),
-    'Mercado Livre': MercadoLivreConnector()
+    "Extra": ExtraConnector(),
+    "Carrefour": CarrefourConnector(),
+    "Mambo": MamboConnector(),
+    "Mercado Livre": MercadoLivreConnector(),
 }
-
-# Inicializar cache
 cache = PriceCache(ttl=3600)
 
+
+def _quantity(item):
+    """Aceita tanto o contrato do normalizador (qty) quanto o legado (quantity)."""
+    return float(item.get("qty", item.get("quantity", 1)))
+
+
 async def search_in_store_async(store_name, connector, product_name, cep, filters=None):
-    """Busca assíncrona em uma única loja com cache e filtros"""
+    """Busca um item em uma loja, aplicando cache e restrições de produto."""
     try:
-        # Cache é por nome do produto, mas filtros mudam o resultado. 
-        # Para simplificar, não usaremos cache se houver filtros específicos.
         if not filters:
             cached = cache.get(store_name, product_name)
             if cached:
                 return store_name, cached
 
-        # Buscar real
         results = await connector.search(product_name, cep)
-        if results:
-            # Usar Matching Inteligente com filtros
-            best_match = get_best_match(product_name, results, filters=filters)
-            result_data = {
-                'price': best_match['price'],
-                'name': best_match['name'],
-                'url': best_match.get('url', ''),
-                'mock': best_match.get('mock', False)
-            }
-            if not filters:
-                cache.set(store_name, product_name, result_data)
-            return store_name, result_data
-        return store_name, None
-    except Exception as e:
-        logger.error(f"Erro ao buscar {product_name} em {store_name}: {e}")
+        best_match = get_best_match(product_name, results, filters=filters) if results else None
+        if not best_match:
+            return store_name, None
+
+        result_data = {
+            "price": float(best_match["price"]),
+            "name": best_match["name"],
+            "url": best_match.get("url", ""),
+            "mock": best_match.get("mock", False),
+        }
+        if not filters:
+            cache.set(store_name, product_name, result_data)
+        return store_name, result_data
+    except Exception:
+        logger.exception("Erro ao buscar %s em %s", product_name, store_name)
         return store_name, None
 
-async def fetch_all_prices(items, cep, filters=None):
-    """Busca todos os itens em todas as lojas em paralelo com filtros"""
-    all_tasks = []
-    for item in items:
-        product_name = item.get('product_name')
-        for store_name, connector in connectors.items():
-            all_tasks.append(search_in_store_async(store_name, connector, product_name, cep, filters))
-    
-    # Executar tudo em paralelo
-    results = await asyncio.gather(*all_tasks)
-    
-    # Organizar resultados por item
+
+async def fetch_all_prices(items, cep, selected_connectors, filters=None):
+    """Busca todos os itens nas lojas selecionadas em paralelo."""
+    tasks = [
+        search_in_store_async(store_name, connector, item["product_name"], cep, filters)
+        for item in items
+        for store_name, connector in selected_connectors.items()
+    ]
+    results = await asyncio.gather(*tasks)
+
     organized = []
-    idx = 0
+    result_index = 0
     for item in items:
-        item_prices = {}
-        for _ in range(len(connectors)):
-            store_name, data = results[idx]
-            item_prices[store_name] = data
-            idx += 1
+        prices = {}
+        for _ in selected_connectors:
+            store_name, price = results[result_index]
+            prices[store_name] = price
+            result_index += 1
         organized.append({
-            'product_name': item.get('product_name'),
-            'quantity': item.get('quantity', 1),
-            'prices': item_prices
+            "product_name": item["product_name"],
+            "qty": _quantity(item),
+            "size_value": item.get("size_value"),
+            "size_unit": item.get("size_unit"),
+            "prices": prices,
         })
     return organized
 
-@quote_bp.route('/quote', methods=['POST'])
-def quote():
-    data = request.json
-    items = data.get('items', [])
-    cep = data.get('cep')
-    filters = data.get('filters', {}) # { brand: "Nestlé", organic: true }
-    
-    if not items:
-        return jsonify({'success': False, 'error': 'Nenhum item'}), 400
 
-    # Executar loop assíncrono
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        items_with_prices = loop.run_until_complete(fetch_all_prices(items, cep, filters))
-    finally:
-        loop.close()
+def _basket_item(item, price_data):
+    subtotal = round(price_data["price"] * item["qty"], 2)
+    return {
+        "product_name": item["product_name"],
+        "qty": item["qty"],
+        "size_value": item.get("size_value"),
+        "size_unit": item.get("size_unit"),
+        "unit_price": price_data["price"],
+        "total": subtotal,
+        "url": price_data.get("url", ""),
+        "mock": price_data.get("mock", False),
+    }
 
-    # Cálculo de Cestas (Lógica simplificada para MVP)
-    # 1. Cesta Única
-    best_single_store = None
-    min_total = float('inf')
-    
-    for store in connectors.keys():
-        total = 0
-        store_items = []
-        possible = True
-        for item in items_with_prices:
-            p_data = item['prices'].get(store)
-            if not p_data:
-                possible = False
-                break
-            subtotal = p_data['price'] * item['quantity']
-            total += subtotal
-            store_items.append({
-                'product_name': item['product_name'],
-                'unit_price': p_data['price'],
-                'subtotal': subtotal,
-                'store': store
+
+def calculate_baskets(items_with_prices, store_names):
+    """Calcula cestas única e mista usando o mesmo formato consumido pelo frontend."""
+    single_candidates = []
+    for store_name in store_names:
+        if all(item["prices"].get(store_name) for item in items_with_prices):
+            basket_items = [_basket_item(item, item["prices"][store_name]) for item in items_with_prices]
+            subtotal = round(sum(item["total"] for item in basket_items), 2)
+            frete = 0.0 if subtotal >= 50 else 9.9
+            single_candidates.append({
+                "store": store_name,
+                "items": basket_items,
+                "subtotal": subtotal,
+                "frete": frete,
+                "minimo": 50.0,
+                "meets_minimum": subtotal >= 50,
+                "total": round(subtotal + frete, 2),
             })
-        
-        if possible and total < min_total:
-            min_total = total
-            best_single_store = {'store': store, 'total': round(total, 2), 'items': store_items}
 
-    # 2. Cesta Mista
-    mixed_total = 0
-    mixed_items = []
+    single_store = min(single_candidates, key=lambda basket: basket["total"]) if single_candidates else None
+
+    grouped = {}
+    unavailable_items = []
     for item in items_with_prices:
-        valid_prices = {s: p for s, p in item['prices'].items() if p}
-        if valid_prices:
-            best_store = min(valid_prices, key=lambda s: valid_prices[s]['price'])
-            p_data = valid_prices[best_store]
-            subtotal = p_data['price'] * item['quantity']
-            mixed_total += subtotal
-            mixed_items.append({
-                'product_name': item['product_name'],
-                'unit_price': p_data['price'],
-                'subtotal': subtotal,
-                'store': best_store
-            })
+        available = {name: value for name, value in item["prices"].items() if value}
+        if not available:
+            unavailable_items.append(item["product_name"])
+            continue
+        store_name, price_data = min(available.items(), key=lambda pair: pair[1]["price"])
+        grouped.setdefault(store_name, []).append(_basket_item(item, price_data))
+
+    mixed_stores = []
+    for store_name, basket_items in grouped.items():
+        subtotal = round(sum(item["total"] for item in basket_items), 2)
+        frete = 0.0 if subtotal >= 50 else 9.9
+        mixed_stores.append({
+            "store": store_name,
+            "items": basket_items,
+            "subtotal": subtotal,
+            "frete": frete,
+            "minimo": 50.0,
+            "meets_minimum": subtotal >= 50,
+            "total": round(subtotal + frete, 2),
+        })
+
+    total_frete = round(sum(store["frete"] for store in mixed_stores), 2)
+    mixed_total = round(sum(store["total"] for store in mixed_stores), 2)
+
+    # Comprar cada item pelo menor preço pode gerar vários fretes. A cesta
+    # apresentada como "otimizada" nunca deve ser mais cara que a melhor loja única.
+    if single_store and single_store["total"] < mixed_total:
+        mixed_stores = [{**single_store}]
+        total_frete = single_store["frete"]
+        mixed_total = single_store["total"]
+    mixed_basket = {"stores": mixed_stores, "total_frete": total_frete, "total": mixed_total}
+    return single_store, mixed_basket, unavailable_items
+
+
+@quote_bp.route("/quote", methods=["POST"])
+def quote():
+    data = request.get_json(silent=True) or {}
+    items = data.get("items") or []
+    if not items:
+        return jsonify({"success": False, "error": "Nenhum item fornecido"}), 400
+    try:
+        invalid_items = [item for item in items if not item.get("product_name") or _quantity(item) <= 0]
+    except (TypeError, ValueError):
+        invalid_items = items
+    if invalid_items:
+        return jsonify({"success": False, "error": "Todos os itens precisam de nome e quantidade positiva"}), 400
+
+    requested_stores = data.get("stores") or list(connectors)
+    unknown_stores = sorted(set(requested_stores) - set(connectors))
+    if unknown_stores:
+        return jsonify({"success": False, "error": f"Lojas desconhecidas: {', '.join(unknown_stores)}"}), 400
+    selected_connectors = {name: connectors[name] for name in requested_stores}
+
+    items_with_prices = asyncio.run(
+        fetch_all_prices(items, data.get("cep"), selected_connectors, data.get("filters") or None)
+    )
+    single_store, mixed_basket, unavailable_items = calculate_baskets(items_with_prices, requested_stores)
+
+    if single_store:
+        amount = max(round(single_store["total"] - mixed_basket["total"], 2), 0)
+        percentage = round(amount / single_store["total"] * 100, 1) if single_store["total"] else 0
+    else:
+        amount = percentage = 0
 
     return jsonify({
-        'success': True,
-        'single_basket': best_single_store,
-        'mixed_basket': {'total': round(mixed_total, 2), 'items': mixed_items},
-        'savings': {
-            'value': round((best_single_store['total'] - mixed_total) if best_single_store else 0, 2),
-            'percent': round(((best_single_store['total'] - mixed_total) / best_single_store['total'] * 100) if best_single_store and best_single_store['total'] > 0 else 0, 1)
-        }
+        "success": True,
+        "single_store": single_store,
+        "mixed_basket": mixed_basket,
+        "savings": {"amount": amount, "percentage": percentage},
+        "unavailable_items": unavailable_items,
     })
