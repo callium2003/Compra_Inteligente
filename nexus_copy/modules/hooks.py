@@ -57,7 +57,6 @@ class HookGenerator:
             acao="fazer hooks",
             numero="3",
             topico=dor,
-            profissao="copywriters",
             problema="ter poucos views",
             profissao="criadores virais",
             objetivo="viralizar",

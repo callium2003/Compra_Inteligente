@@ -56,9 +56,10 @@ def get_best_match(target_name: str, products: list, threshold: float = 0.3, fil
             scored_products.append((final_score, p))
             
     if not scored_products:
-        # Se os filtros forem muito restritivos, tentamos sem filtros como fallback
-        # ou retornamos o mais barato dos que sobraram
-        if not products: return None
+        # Um filtro explícito é uma restrição, não uma preferência. Retornar um
+        # produto de outra marca (ou não orgânico) surpreenderia o usuário.
+        if brand_filter or organic_only:
+            return None
         return min(products, key=lambda x: x['price'])
         
     scored_products.sort(key=lambda x: (-x[0], x[1]['price']))
