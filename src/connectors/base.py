@@ -6,7 +6,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
-import httpx
+import requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -32,22 +32,23 @@ class SupermarketConnector(ABC):
         """Obtém detalhes completos de um produto (Assíncrono)"""
         pass
     
-    async def make_request(self, url: str, method: str = 'GET', **kwargs) -> httpx.Response:
-        """Faz requisição HTTP assíncrona"""
-        async with httpx.AsyncClient(headers=self.headers, timeout=15.0, follow_redirects=True) as client:
-            try:
-                if method.upper() == 'GET':
-                    response = await client.get(url, **kwargs)
-                elif method.upper() == 'POST':
-                    response = await client.post(url, **kwargs)
-                else:
-                    raise ValueError(f"Método HTTP não suportado: {method}")
-                
-                response.raise_for_status()
-                return response
-            except httpx.HTTPError as e:
-                logger.error(f"Erro na requisição assíncrona para {url}: {e}")
-                return None
+    async def make_request(self, url: str, method: str = 'GET', **kwargs) -> requests.Response:
+        """Faz a requisição sem bloquear as demais buscas do loop assíncrono."""
+        try:
+            response = await asyncio.to_thread(
+                requests.request,
+                method.upper(),
+                url,
+                headers=self.headers,
+                timeout=15,
+                allow_redirects=True,
+                **kwargs,
+            )
+            response.raise_for_status()
+            return response
+        except requests.RequestException as e:
+            logger.error(f"Erro na requisição assíncrona para {url}: {e}")
+            return None
 
     def normalize_price(self, price_string: str) -> float:
         try:
